@@ -15,20 +15,44 @@ WHITELISTED_FILES = ["security_audit.py", "log_sanitizer.py", "README.md", "boot
 # Directories that should never be scanned for real secrets (mocks/tests)
 IGNORED_DIRS = ["tests", "venv", ".venv", "__pycache__", ".git", "scratch", "SentinelAPI"]
 
+def safe_print(msg):
+    """Prints message handling potential encoding issues in Windows environments."""
+    try:
+        print(msg)
+    except UnicodeEncodeError:
+        safe_msg = msg.encode('ascii', errors='replace').decode('ascii')
+        print(safe_msg)
+
 def check_gitignore():
     """Checks if mandatory secrets are in .gitignore."""
     if not os.path.exists('.gitignore'):
         # Some small scrapers might not have it, but we warn
-        print("⚠️ Warning: NO .gitignore FOUND!")
+        safe_print("⚠️ Warning: NO .gitignore FOUND!")
         return True # Don't block if intentionally not using git
     
-    with open('.gitignore', 'r') as f:
-        content = f.read()
+    content = ""
+    # Try common encodings for Windows/Unix compatibility
+    for encoding in ['utf-8', 'utf-8-sig', 'utf-16']:
+        try:
+            with open('.gitignore', 'r', encoding=encoding) as f:
+                content = f.read()
+                if content: break
+        except (UnicodeDecodeError, Exception):
+            continue
+            
+    if not content:
+        # Fallback to binary read and decode with ignore
+        try:
+            with open('.gitignore', 'rb') as f:
+                content = f.read().decode('utf-8', errors='ignore')
+        except:
+            safe_print("⚠️ Warning: Could not read .gitignore properly.")
+            return True
         
     all_present = True
     for item in MANDATORY_GITIGNORE:
         if item not in content:
-            print(f"❌ '{item}' is NOT in .gitignore!")
+            safe_print(f"❌ '{item}' is NOT in .gitignore!")
             all_present = False
             
     return all_present
@@ -60,25 +84,33 @@ def scan_for_secrets(project_root='.'):
                     continue
                     
     if found_secrets:
-        print("❌ SentinelAPI: SECRET EXPOSURE DETECTED!")
+        safe_print("❌ SentinelAPI: SECRET EXPOSURE DETECTED!")
         for secret in found_secrets:
-            print(f"   - {secret}")
+            safe_print(f"   - {secret}")
         return False
     return True
 
-def validate_environment():
+def validate_environment(check_apis=True):
     """Main entry point for security verification."""
-    print("[SENTINEL] SentinelAPI: Pre-flight Audit...")
+    safe_print("[SENTINEL] SentinelAPI: Pre-flight Audit...")
     
     gi_ok = check_gitignore()
     sec_ok = scan_for_secrets()
     
     if not (gi_ok and sec_ok):
-        print("\n[SENTINEL] STARTUP BLOCKED: Security vulnerabilities detected.")
-        print("Please resolve the issues above before running the application.")
+        safe_print("\n[SENTINEL] STARTUP/PUSH BLOCKED: Security vulnerabilities detected.")
+        safe_print("Please resolve the issues above before proceeding.")
         sys.exit(1)
     
-    print("[SENTINEL] SentinelAPI: Security Audit Passed.")
+    if check_apis:
+        try:
+            from api_checker import validate_all_apis
+            if not validate_all_apis():
+                sys.exit(1)
+        except ImportError:
+            safe_print("⚠️ Warning: api_checker not found. Skipping API health check.")
+            
+    safe_print("[SENTINEL] SentinelAPI: Security Audit Passed.")
 
 if __name__ == "__main__":
     validate_environment()
