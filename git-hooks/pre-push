@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# SentinelAPI: Global Git Pre-push Hook
+# Protects against accidental API Key exposure before pushing.
+
+echo "🛡️ SentinelAPI: Running Pre-push Security Audit..."
+
+# Get the directory where SentinelAPI is located (sibling to most projects)
+SENTINEL_DIR="D:/Scripts/SentinelAPI"
+
+if [ ! -d "$SENTINEL_DIR" ]; then
+    echo "⚠️ Warning: SentinelAPI directory not found at $SENTINEL_DIR. Skipping audit."
+    exit 0
+fi
+
+# Run the audit script
+# We use the python interpreter from the environment
+python "$SENTINEL_DIR/security_audit.py"
+
+# Capture exit code
+RESULT=$?
+
+if [ $RESULT -ne 0 ]; then
+    echo "❌ SentinelAPI: Push ABORTED due to security vulnerabilities."
+    exit 1
+fi
+
+echo "✅ SentinelAPI: Audit successful. Proceeding with push."
+exit 0
