@@ -12,6 +12,7 @@ if sentinel_dir not in sys.path:
 
 from api_checker import verify_gemini_api, validate_all_apis
 from security_audit import scan_for_secrets, check_gitignore
+from log_sanitizer import RedactedStream
 
 class TestSentinelAPI(unittest.TestCase):
     
@@ -75,6 +76,40 @@ class TestSentinelAPI(unittest.TestCase):
         # This will depend on the current workspace state
         result = check_gitignore()
         self.assertIsInstance(result, bool)
+
+class TestLogSanitizer(unittest.TestCase):
+    
+    def test_redaction_basic(self):
+        """Verify that basic sensitive values are redacted."""
+        import io
+        stream = io.StringIO()
+        sensitive = ["AIzaSySecretKey", "VeryPrivateToken"]
+        redacted = RedactedStream(stream, sensitive)
+        
+        redacted.write("This is my key: AIzaSySecretKey")
+        self.assertEqual(stream.getvalue(), "This is my key: [REDACTED]")
+        
+    def test_redaction_diverse_formats(self):
+        """Verify redaction of private key-like strings."""
+        import io
+        stream = io.StringIO()
+        # Simulation of a complex private key part
+        key_part = "MIIEpAIBAAKCAQEA75h7m" 
+        sensitive = [key_part]
+        redacted = RedactedStream(stream, sensitive)
+        
+        redacted.write(f"Key data: {key_part}")
+        self.assertEqual(stream.getvalue(), "Key data: [REDACTED]")
+
+    def test_sanitizer_minimum_length(self):
+        """Verify that very short strings are not accidentally redacted (to avoid over-redaction)."""
+        import io
+        stream = io.StringIO()
+        sensitive = ["abc"] # Too short (min 4 in RedactedStream)
+        redacted = RedactedStream(stream, sensitive)
+        
+        redacted.write("abc")
+        self.assertEqual(stream.getvalue(), "abc")
 
 if __name__ == '__main__':
     unittest.main()

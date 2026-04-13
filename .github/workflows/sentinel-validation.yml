@@ -1,0 +1,35 @@
+name: Sentinel Integrity Validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          # Sentinel usually only needs python-dotenv for local use, 
+          # but we ensure it's there for tests if needed.
+          pip install python-dotenv
+
+      - name: Security Audit (Self-Check)
+        run: |
+          # The auditor should return exit code 1 if it finds issues
+          python security_audit.py
+
+      - name: Run Sentinel Unit Tests
+        run: |
+          python -m unittest tests/test_sentinel.py
