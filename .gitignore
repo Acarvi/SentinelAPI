@@ -11,3 +11,5 @@ brain/
 *.log
 *.tmp
 话题部
+client_secrets.json
+*.pickle
