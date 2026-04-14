@@ -14,7 +14,6 @@ def activate_security():
     # Try to load .env from the current working directory to ensure API keys are available
     try:
         from dotenv import load_dotenv
-        import os
         cwd = os.getcwd()
         env_path = os.path.join(cwd, ".env")
         if os.path.exists(env_path):
@@ -36,14 +35,13 @@ def activate_security():
         # 1. Audit files and secrets (Security Layer)
         validate_environment()
         
-        # 2. Check external API connectivity (Resilience Layer)
-        if not validate_all_apis():
-            sys.exit(1)
+        # 2. Check external API connectivity (Resilience Layer - Informational)
+        validate_all_apis()
             
         # 3. Initialize log redaction (Privacy Layer)
         init_sanitizer()
     except ImportError as e:
-        print(f"🛑 SentinelAPI Bootstrap Failed: {e}")
+        print(f"[SENTINEL] ERROR: SentinelAPI Bootstrap Failed - {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

@@ -106,7 +106,7 @@ def validate_environment(check_apis=True):
         try:
             from api_checker import validate_all_apis
             if not validate_all_apis():
-                sys.exit(1)
+                safe_print("[SENTINEL] Warning: Some API Health Checks failed. Fallbacks may be triggered.")
         except ImportError:
             safe_print("⚠️ Warning: api_checker not found. Skipping API health check.")
             
