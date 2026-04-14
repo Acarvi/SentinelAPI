@@ -11,17 +11,14 @@ def activate_security():
     if current_dir not in sys.path:
         sys.path.insert(0, current_dir)
     
-    # Try to load .env from the current working directory to ensure API keys are available
     try:
         from dotenv import load_dotenv
-        import os
-        cwd = os.getcwd()
-        env_path = os.path.join(cwd, ".env")
+        env_path = os.path.join(os.getcwd(), ".env")
         if os.path.exists(env_path):
             load_dotenv(env_path)
         else:
             # Try to find .env in the parent directory if we are inside a subfolder
-            parent_env = os.path.join(os.path.dirname(cwd), ".env")
+            parent_env = os.path.join(os.path.dirname(os.getcwd()), ".env")
             if os.path.exists(parent_env):
                 load_dotenv(parent_env)
     except ImportError:
